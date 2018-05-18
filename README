@@ -1,13 +1,14 @@
-This repository provides the header file and the shared library of the doubly linked list.
+This repository provides the source code and the shared library of the doubly linked lists.
 A simple test program is provided (under target 'test' in the makefile), but the doubly linked list
 shall be used in custom programs. Just link your program agains the provided (x86_64 architecture) shared library object:
 
-LDFLAGS += -L. -ldll
+LDFLAGS += -L. -ldll-c
 
-and be sure to include the current directory in the LD_LIBRARY_PATH. For that matter, a dummy target 'run' has been added
-in the makefile, so the sample test program can be run with
+or
 
-make run
+LDFLAGS += -L. -ldll-c++
+
+and be sure to include the current directory in the LD_LIBRARY_PATH.
 
 --------
 Feedback & comments are much appreciated!
