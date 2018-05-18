@@ -1,9 +1,9 @@
-CC 			= gcc
-CFLAGS 		= -c -Wall -Wextra -Wpedantic -fPIC --std=c11 -g
-LDFLAGS 	= -Wall -Wextra -Wpedantic -fPIC --std=c11 -g
+CC 			= g++
+CXXFLAGS 	= -c -Wall -Wextra -Wpedantic -fPIC --std=c++1z -g
+LDFLAGS 	= -Wall -Wextra -Wpedantic -fPIC --std=c++1z -g
 LIBFLAGS 	= -shared
 
-LIBNAME 	= libdll-c
+LIBNAME 	= libdll-c++
 LIBVERSION  = 0.2
 
 all: test lib
@@ -12,14 +12,14 @@ test: main.o dll.o
 	@echo "Linking objects $^"
 	${CC} ${LDFLAGS} $^ -o $@
 
-%.o: %.c
-	${CC} ${CFLAGS} $^ -o $@
+%.o: %.cpp
+	${CC} ${CXXFLAGS} $^ -o $@
 
 lib: ${LIBNAME}.so.${LIBVERSION}
 
-${LIBNAME}.so.${LIBVERSION}: dll.c dll.h
+${LIBNAME}.so.${LIBVERSION}: dll.cpp dll.h
 	@echo "Building shared lib $@"
-	${CC} ${CFLAGS} ${LIBFLAGS} $< -o $@
+	${CC} ${CXXFLAGS} ${LIBFLAGS} $< -o $@
 	@rm -f ${LIBNAME}.so
 	@echo "Creating simlink to version ${LIBVERSION}"
 	@ln -s ${LIBNAME}.so.${LIBVERSION} ${LIBNAME}.so
