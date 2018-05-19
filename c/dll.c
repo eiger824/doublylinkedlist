@@ -140,13 +140,17 @@ void dll_print_node(dll_node_t * node, void (*custom_print)(void *))
     custom_print(node->data);
 }
 
-dll_t * dll_copy_list(dll_t * rhs)
+dll_t * dll_copy_list(dll_t * rhs, size_t size_of_data)
 {
     dll_t * list = dll_init();
     dll_node_t * nd = rhs->head->next;
     while (nd != rhs->tail)
     {
-        dll_insert_end(list, nd->data);
+        /* Make a copy of the data */
+        void * new_item = malloc(size_of_data);
+        memcpy(new_item, nd->data, size_of_data);
+        /* And insert it to the new list */
+        dll_insert_end(list, new_item);
         nd = nd->next;
     }
     return list;
@@ -168,7 +172,7 @@ dll_node_t * dll_extract_at(dll_t * list, int index, void * data, size_t size_of
 {
     dll_node_t * node = dll_at(list, index);
     if (!node)
-        return false;
+        return NULL;
     return dll_extract(list, node, data, size_of_data);
 }
 
