@@ -1,284 +1,175 @@
-#ifndef __DOUBLYLINKEDLIST_H
-#define __DOUBLYLINKEDLIST_H
+#ifndef DOUBLYLINKEDLIST_H_
+#define DOUBLYLINKEDLIST_H_
 
 #include <stdio.h>
 #include <stdbool.h>
 
-typedef struct dll_node_type
-{
-    void * data;
-    struct dll_node_type * next;
-    struct dll_node_type * prev;
+typedef struct dll_type dll_t;
 
-} dll_node_t;
+/* Utility function prototypes. */
+typedef void (*dll_print_fn_t)(const void* data, void* arg);
+typedef void (*dll_foreach_fn_t)(const void* data, void* arg);
+typedef void (*dll_free_fn_t)(void* data);
 
-typedef struct dll_type
-{
-    dll_node_t * head;
-    dll_node_t * tail;
-
-    int count;
-
-} dll_t;
-
-/*
- * Function:	dll_init
- * Brief:	    Initializes an empty dll.
- * Returns:	    Nothing
-*/
-dll_t *dll_init(void);
-
-/*
- * Function:	dll_destroy
- * Brief:	    Destroys a given list.
- * @param list:	The list to destroy
- * Returns:	    Nothing, memory allocated by @list is freed.
-*/
-void dll_destroy(dll_t * list);
-
-/*
- * Function:	dll_insert_after
- * Brief:	    Given a list and a node within the list, it inserts
- *              new data after the given node.
- * @param list:	The target list
- * @param node:	The node after which the data is to be inserted
- * @param p:	Pointer to raw data that the new node will keep
- * Returns:	    Nothing.
-*/
-void dll_insert_after(dll_t * list, dll_node_t * node, void * p);
-/*
- * Function:	dll_insert_before
- * Brief:	    Given a list and a node within the list, it inserts
- *              new data before the given node.
- * @param list:	The target list
- * @param node: The node before which the data is to be inserted
- * @param p:    Pointer to raw data that the new node will keep
- * Returns:	    Nothing.
-*/
-void dll_insert_before(dll_t * list, dll_node_t * node, void * p);
-
-/*
- * Function:	dll_insert_beginning
- * Brief:	    Given a list, it inserts data at the first position
- * @param list:	The target list
- * @param p:	Pointer to raw data that the new node will keep
- * Returns:	    Nothing.
-*/
-void dll_insert_beginning(dll_t * list, void * p); 
-/*
- * Function:	dll_prepend
- * Brief:       Alias to function @dll_insert_beginning.
- * @param list:	The target list
- * @param p:	Pointer to raw data that the new node will keep
- * Returns:	    Nothing.
-*/
-void dll_prepend(dll_t * list, void * p);
-
-/*
- * Function:	dll_insert_end
- * Brief:	    Given a list, it inserts data at the last position
- * @param list:	The target list
- * @param p:	Pointer to raw data that the new node will keep
- * Returns:	    Nothing.
-*/
-void dll_insert_end(dll_t * list, void * p); 
-/*
- * Function:	dll_append
- * Brief:	    Alias to function @dll_insert_end
- * @param list:	The target list
- * @param p:	Pointer to raw data that the new node will keep
- * Returns:	    Nothing.
-*/
-void dll_append(dll_t * list, void * p);
-
-/*
- * Function:	dll_at
- * Brief:	    Given an index, it returns the node associated to
- *              that position. Note that this function runs in O(n),
- *              so it should not be used to access a certain node
- *              when looping through the list, since it will loop
- *              through all elements until the current one.
- * @param list: The target list
- * @param index:The index of that node
- * Returns:	    If the index is within the list's count, it returns
- *              a pointer to the node at that position, otherwise a
- *              null pointer is returned.
-*/
-dll_node_t * dll_at(dll_t * list, int index);
-
-/*
- * Function:	dll_extract_at
- * Brief:	    Given a list and an index, it removes the node at
- *              that position and copies its data for further use
- *              outside the list.
- * @param list:	The target list
- * @param index:The index associated with the node to remove
- * @param data:	Pointer to raw data that will be updated with the
- *              contents of the node to remove
- * @param size_of_data:	How many bytes will be copied
- * Returns:	    On success, a pointer to the next node in the list
- *              will be returned and the contents of the deleted
- *              node will have been copied to @data, exactly
- *              @size_of_data bytes. Otherwise, a null pointer will
- *              be returned.
-*/
-dll_node_t * dll_extract_at(dll_t * list, int index, void * data, size_t size_of_data);
-/*
- * Function:	dll_extract
- * Brief:	    Given a list and a node belonging to it, it removes
- *              that node and copies its data for further use outside
- *              the list.
- * @param list:	The target list
- * @param node:	The node to remove
- * @param data:	Pointer to raw data that will be updated with the
- *              contents of the node to remove
- * @param size_of_data:	How many bytes will be copied
- * Returns:	    On success, a pointer to the next node in the list will
- *              be returned and the contents of the deleted node will
- *              have been copied to @data, exactly @size_of_data bytes.
- *              Otherwise, a null pointer will be returned.
-*/
-dll_node_t * dll_extract(dll_t * list, dll_node_t *node, void * data, size_t size_of_data);
-
-/*
- * Function:	dll_delete_at
- * Brief:	    Given a list and an index, it removes the node associated
- *              with that position.
- * @param list:	The target list
- * @param index:The index corresponding to the node to remove
- * Returns:	    On success, a pointer to the next node on the list shall
- *              be returned.
-*/
-dll_node_t * dll_delete_at(dll_t * list, int index);
-/*
- * Function:	dll_delete
- * Brief:	    Given a list and a node in the list, it removes the node.
- * @param list:	The target list
- * @param node:	The node to be removed
- * Returns:	    On success, a pointer to the next node on the list is
- *              returned
-*/
-dll_node_t * dll_delete(dll_t * list, dll_node_t *node);
-
-/*
- * Function:	dll_print
- * Brief:	    Given a list and a custom-defined printing function
- *              for the node datatype, it outputs the contents of the
- *              list.
+/**
+ * @brief Create an empty list.
  *
- *              Note that this implementation of doubly linked list
- *              has been generalized to use any type of data type /
- *              structure as inner-node data, since every node holds
- *              a void * pointer. Hence, if the user wants to print
- *              the list with own datatypes he / she shall create a
- *              function that takes a raw data pointer as only input
- *              argument, cast it to the desired datatype and print it.
- *
- *              Example:
- *
- *              struct foo
- *              {
- *                  int a;
- *                  char b;
- *                  float c;
- *              }
- *
- *              The list contains elements of the type 'struct foo'.
- *              Hence a function similar to the following one shall
- *              be defined somewhere:
- *
- *              void printing_function(void * data)
- *              {
- *                  struct foo * item = (struct foo *) data;
- *                  printf("%d, %c, %f\n", item->a, item->b, item->c);
- *              }
- *
- *              And in order to print the whole list:
- *
- *              .....
- *              dll_print(my_list, printing_function);
- *              .....
- * @param list:	The target list
- * @param custom_print:	Function pointer to the user-defined
- *                      node-printing function
- * Returns:	    Nothing.
-*/
-void dll_print(dll_t * list, void (*custom_print)(void *));
-/*
- * Function:	dll_print_node
- * Brief:	    Given a node belonging to the list, it prints its contents (see
- *              comments on how to pass a user-defined function on the description
- *              of @dll_print)
- * @param node:	Pointer to the node in question
- * @param custom_print:	Function pointer to the user-defined node-printing function
- * Returns:	    Nothing.
-*/
-void dll_print_node(dll_node_t * node, void (*custom_print)(void *));
+ * @return List.
+ */
+dll_t*
+dll_create(void);
 
-/*
- * Function:	dll_emtpy
- * Brief:	    Given a list, it removes all its nodes and becomes and empty list
- *              (as in after a call to @dll_init).
- * @param list:	The target list
- * Returns:	    Nothing.
-*/
-void dll_empty(dll_t * list);
-/*
- * Function:	dll_is_empty
- * Brief:	    Given a list, it determines whether the list is empty or not
- * @param list: The target list
- * Returns:	    true if the list is empty, false otherwise
-*/
-bool dll_is_empty(dll_t * list);
+/**
+ * @brief Destroys a list.
+ *
+ * @param list List.
+ * @param fn   Function to free the inner nodes' data (can be NULL).
+ */
+void
+dll_destroy(dll_t* list, dll_free_fn_t fn);
 
-/*
- * Function:	dll_copy_list
- * Brief:	    Given a list, it outputs a copy it. It allocates new memory
- *              for the data held by the nodes.
- * @param rhs:	The list to be copied
- * @param size_of_data: Byte count of the data type being held by every node.
- * Returns:	    Pointer to the newly create list out of @rhs
-*/
-dll_t * dll_copy_list(dll_t * rhs, size_t size_of_data);
+/**
+ * @brief Empty the current list.
+ *
+ * @param list List.
+ * @param fn   Function to free the inner nodes' data (can be NULL).
+ */
+void
+dll_empty(dll_t* list, dll_free_fn_t fn);
 
-/*
- * Function:	dll_to_array
- * Brief:	    Given a list, it converts it to a C-style array
- * @param list:	The target list
- * @param size_of_data:	Byte count of every inner-node data
- * Returns:	    Pointer to raw data containing the list as an array.
-*/
-void * dll_to_array(dll_t * list, size_t size_of_data);
-/*
- * Function:	dll_from_array
- * Brief:	    Given an array and the length of the array and the size of every
- *              element, it returns a list containing that data.
- * @param array:The array to convert
- * @param count:The number of elements in the array
- * @param size_of_data:	Byte count of the array elements
- * Returns:	    Pointer to the new list
-*/
-dll_t   * dll_from_array(void * array, int count, size_t size_of_data);
+/**
+ * @brief Test whether the list is empty.
+ *
+ * @param list List.
+ *
+ * @return True if empty.
+ */
+bool
+dll_is_empty(const dll_t* list);
 
-/*
- * Function:	dll_swap
- * Brief:	    Given a list and two indexes in that list, it swaps the nodes
- *              at the given positions
- * @param list:	The target list
- * @param index1:	Position on that list
- * @param index2:	Position on that list
- * Returns:	    true on success, false otherwise
-*/
-bool dll_swap(dll_t * list, int index1, int index2);
-/*
- * Function:	dll_swap_nodes
- * Brief:	    Given a list and two nodes on that list, it swaps them
- * @param list:	The targe tlist
- * @param node1:Node on that list
- * @param node2:Node on that list
- * Returns:	    true on success, false otherwise
-*/
-bool dll_swap_nodes(dll_t * list, dll_node_t * node1, dll_node_t * node2);
+/**
+ * @brief Get the number of elements in the list.
+ *
+ * @param list List.
+ *
+ * @return Element count.
+ */
+size_t
+dll_count(const dll_t* list);
 
-#endif /* __DOUBLYLINKEDLIST_H */
+/* Modifiers. */
+/**
+ * @brief Prepend an element to the list.
+ *
+ * @param list List.
+ * @param p    Element to prepend.
+ */
+void
+dll_insert_beginning(dll_t* list, void* p); 
+#define dll_prepend(list, data) dll_insert_beginning(list, data)
 
+/**
+ * @brief Append and element to the list.
+ *
+ * @param list List.
+ * @param p    Element to append.
+ */
+void
+dll_insert_end(dll_t* list, void* p); 
+#define dll_append(list, data) dll_insert_end(list, data)
+
+/**
+ * @brief Get the element at the provided index.
+ *        Runs in O(n) (worst case), so don't over-use.
+ *
+ * @param list  List.
+ * @param index Position of the element in the list.
+ *
+ * @return Element at position @p index.
+ */
+void*
+dll_peek_at(const dll_t* list, size_t index);
+
+/**
+ * @brief Remove (extract) the element at the provided index.
+ *
+ * @param list  List.
+ * @param index Position of the element in the list (to be removed).
+ *
+ * @return Element at position @p index before removal.
+ */
+void*
+dll_extract_at(dll_t* list, size_t index);
+#define dll_delete_at(list, index) dll_extract_at(list, index)
+#define dll_extract_first(list) dll_extract_at(list, 0)
+#define dll_pop_first(list) dll_extract_first(list)
+#define dll_extract_last(list) dll_extract_at(list, dll_count(list) ? dll_count(list)-1 : 0)
+#define dll_pop_last(list) dll_extract_last(list)
+
+/**
+ * @brief Create a clone of the given list.
+ *
+ * @param list List to clone.
+ *
+ * @return New list, clone of @p rhs.
+ */
+dll_t*
+dll_clone(const dll_t* list);
+
+/**
+ * @brief Swap two given nodes of the list by providing their index.
+ *
+ * @param list   List.
+ * @param index1 Index of node 1.
+ * @param index2 Index of node 2.
+ *
+ * @return True if the swap was performed.
+ */
+bool
+dll_swap(dll_t* list, size_t index1, size_t index2);
+
+/**
+ * @brief Print the list given a custom printing function.
+ *
+ * @param list List.
+ * @param fn   Printing function (must be provided).
+ * @param arg  Argument sent to @p fn.
+ */
+void
+dll_print(const dll_t* list, dll_print_fn_t fn, void* arg);
+
+/**
+ * @brief Iterate over all elements in the list, applying a custom function on each of them.
+ *
+ * @param list List.
+ * @param fn   Function to apply to the elements (must be provided).
+ * @param arg  Argument sent to @p fn.
+ */
+void
+dll_foreach(const dll_t* list, dll_foreach_fn_t fn, void* arg);
+
+/**
+ * @brief Convert the given list to an array.
+ *
+ * @param list         List.
+ * @param size_of_elem Size of the elements in the list, in bytes.
+ * @param rv_size      Size of the output array (i.e., number of elements in it).
+ *
+ * @return Pointer to an array on the heap (caller must free it).
+ */
+void*
+dll_to_array(const dll_t* list, size_t size_of_elem, size_t* rv_size);
+
+/**
+ * @brief Given an input array, create a list containing its elements.
+ *        Note that elements will be allocated dynamically, so these need to be free'd when destroying the output list.
+ *
+ * @param array        Array containing the elements.
+ * @param count        Number of elements in @p array.
+ * @param size_of_elem Size of the elements in the array, in bytes.
+ *
+ * @return List containing all elements in the input array.
+ */
+dll_t*
+dll_from_array(void* array, size_t count, size_t size_of_elem);
+#endif /* DOUBLYLINKEDLIST_H_ */

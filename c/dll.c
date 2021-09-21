@@ -4,17 +4,36 @@
 
 #include "dll.h"
 
-dll_t *dll_init(void)
+#define abort_unless(expr) \
+    if (!(expr)) {\
+        fprintf(stderr, "Aborting since condition \"%s\" wan't met.\n", #expr);\
+        abort();\
+    }
+
+typedef struct dll_node_type {
+    struct dll_node_type* next;
+    struct dll_node_type* prev;
+    void*                 data;
+} dll_node_t;
+
+struct dll_type {
+    dll_node_t* head;
+    dll_node_t* tail;
+    size_t      count;
+};
+
+dll_t*
+dll_create(void)
 {
-    // Init our list
-    dll_t * list = (dll_t *) malloc(sizeof *list);
+    // Create our list
+    dll_t* list = malloc(sizeof *list);
 
     // Init the head
-    list->head = (dll_node_t * ) malloc (sizeof *list->head);
+    list->head       = malloc(sizeof *list->head);
     list->head->prev = list->head->data = NULL;
 
     // Init the tail
-    list->tail = (dll_node_t * )  malloc (sizeof *list->tail);
+    list->tail       = malloc(sizeof *list->tail);
     list->tail->next = list->tail->data = NULL;
 
     // Head points to tail
@@ -28,10 +47,11 @@ dll_t *dll_init(void)
 	return list;
 }
 
-void dll_destroy(dll_t * list)
+void
+dll_destroy(dll_t* list, dll_free_fn_t fn)
 {
     // Empty the list
-	dll_empty(list);
+	dll_empty(list, fn);
 
     // Free special nodes and the actual list
     free(list->head);
@@ -39,146 +59,10 @@ void dll_destroy(dll_t * list)
 	free(list);
 }
 
-void dll_insert_after(dll_t * list, dll_node_t *node, void * data)
+static dll_node_t*
+dll_delete(dll_t* list, dll_node_t* node, dll_free_fn_t fn)
 {
-    dll_node_t * new_node = (dll_node_t *) malloc (sizeof *new_node);
-
-	list->count++;
-	new_node->prev = node;
-	new_node->next = node->next;
-
-    if (node->next == list->tail)
-	{
-        list->tail->prev = new_node;
-	}
-	else
-	{
-		node->next->prev = new_node;
-	}
-
-	node->next = new_node;
-    new_node->data = data;
-}
-
-void dll_insert_before(dll_t * list, dll_node_t *node, void * data)
-{
-    dll_node_t * new_node = (dll_node_t *) malloc(sizeof *new_node);
-
-	list->count++;
-	new_node->prev = node->prev;
-	new_node->next = node;
-
-    if (node->prev == list->head)
-	{
-        list->head->next = new_node;
-	}
-	else
-	{
-		node->prev->next = new_node;
-	}
-	node->prev = new_node;
-    new_node->data = data;
-}
-
-void dll_insert_beginning(dll_t * list, void * data)
-{
-    dll_insert_before(list, list->head->next, data);
-}
-
-void dll_prepend(dll_t * list, void * data)
-{
-    dll_insert_beginning(list, data);
-}
-
-void dll_insert_end(dll_t * list, void * data)
-{
-    dll_insert_after(list, list->tail->prev, data);
-}
-
-void dll_append(dll_t * list, void * data)
-{
-    dll_insert_end(list, data);
-}
-
-void dll_empty(dll_t * list)
-{
-    dll_node_t * current = list->head->next;
-    while (current != list->tail)
-	{
-        current = dll_delete(list, current);
-	}
-    // Head points to tail
-    list->head->next = list->tail; 
-    // Tail points back to head
-    list->tail->prev = list->head; 
-    // And reset the count
-	list->count = 0;
-}
-
-void dll_print(dll_t * list, void (*custom_print)(void *))
-{
-    printf("Size of list: %d\n", list->count);
-    // Do stuff if something in the list
-    if (!list->count) return;
-    dll_node_t * node = list->head->next;
-    int count = 0 ;
-    while (node != list->tail)
-    {
-        printf("Item %d: ", count++);
-        custom_print(node->data);
-        node = node->next;
-    }
-}
-
-void dll_print_node(dll_node_t * node, void (*custom_print)(void *))
-{
-    if (!node)
-    {
-        printf("Not found.\n");
-        return;
-    }
-    custom_print(node->data);
-}
-
-dll_t * dll_copy_list(dll_t * rhs, size_t size_of_data)
-{
-    dll_t * list = dll_init();
-    dll_node_t * nd = rhs->head->next;
-    while (nd != rhs->tail)
-    {
-        /* Make a copy of the data */
-        void * new_item = malloc(size_of_data);
-        memcpy(new_item, nd->data, size_of_data);
-        /* And insert it to the new list */
-        dll_insert_end(list, new_item);
-        nd = nd->next;
-    }
-    return list;
-}
-
-bool dll_is_empty(dll_t * list)
-{
-    return !list->count;
-}
-
-dll_node_t * dll_extract(dll_t * list, dll_node_t *node, void * data, size_t size_of_data)
-{
-    data= (void * ) malloc (size_of_data);
-    memcpy(data, node->data, size_of_data);
-    return dll_delete(list, node);
-}
-
-dll_node_t * dll_extract_at(dll_t * list, int index, void * data, size_t size_of_data)
-{
-    dll_node_t * node = dll_at(list, index);
-    if (!node)
-        return NULL;
-    return dll_extract(list, node, data, size_of_data);
-}
-
-dll_node_t * dll_delete(dll_t * list, dll_node_t *node)
-{
-    dll_node_t * out;
+    dll_node_t* out = NULL;
 
     // Nothing to do here
     if (list->count == 0)
@@ -206,7 +90,9 @@ dll_node_t * dll_delete(dll_t * list, dll_node_t *node)
     out = node->next;
 
     // Free stuff
-    free(node->data);
+    if (fn) {
+        fn(node->data);
+    }
 	free(node);
 
     // Decrease count
@@ -214,64 +100,154 @@ dll_node_t * dll_delete(dll_t * list, dll_node_t *node)
     return out;
 }
 
-dll_node_t * dll_delete_at(dll_t * list, int index)
+void
+dll_empty(dll_t* list, dll_free_fn_t fn)
 {
-    dll_node_t * node = dll_at(list, index);
-    if (!node)
-        return false;
-    return dll_delete(list, node);
+    dll_node_t* current = list->head->next;
+    while (current != list->tail) {
+        current = dll_delete(list, current, fn);
+	}
+    abort_unless(list->count == 0);
+
+    // Head points to tail
+    list->head->next = list->tail; 
+    // Tail points back to head
+    list->tail->prev = list->head; 
+    // And reset the count
+	list->count = 0;
 }
 
-dll_node_t * dll_at(dll_t * list, int index)
+bool
+dll_is_empty(const dll_t* list)
 {
-    if (index < 0 || index >= list->count)
-    {
+    return !list->count;
+}
+
+size_t
+dll_count(const dll_t* list)
+{
+    return list->count;
+}
+
+static void
+dll_insert_after(dll_t* list, dll_node_t*node, void* data)
+{
+    dll_node_t* new_node = malloc(sizeof *new_node);
+
+	new_node->prev = node;
+	new_node->next = node->next;
+
+    if (node->next == list->tail) {
+        list->tail->prev = new_node;
+	}
+	else {
+		node->next->prev = new_node;
+	}
+
+	node->next     = new_node;
+    new_node->data = data;
+
+	list->count++;
+}
+
+static void
+dll_insert_before(dll_t* list, dll_node_t*node, void* data)
+{
+    dll_node_t* new_node = malloc(sizeof *new_node);
+
+	new_node->prev = node->prev;
+	new_node->next = node;
+
+    if (node->prev == list->head) {
+        list->head->next = new_node;
+	}
+	else {
+		node->prev->next = new_node;
+	}
+	node->prev     = new_node;
+    new_node->data = data;
+
+	list->count++;
+}
+
+void
+dll_insert_beginning(dll_t* list, void* data)
+{
+    dll_insert_before(list, list->head->next, data);
+}
+
+void
+dll_insert_end(dll_t* list, void* data)
+{
+    dll_insert_after(list, list->tail->prev, data);
+}
+
+static dll_node_t*
+dll_peek_node_at(const dll_t* list, const size_t index)
+{
+    if (index >= list->count) {
         return NULL;
     }
-    dll_node_t * node = list->head->next;
-    int count = 0;
-    while (node != list->tail)
-    {
-        if (count++ == index)
+
+    dll_node_t* node = list->head->next;
+    size_t count = 0;
+    while (node != list->tail) {
+        if (count++ == index) {
             return node;
+        }
         node = node->next;
     }
     return NULL;
 }
 
-void * dll_to_array(dll_t * list, size_t size_of_data)
+void*
+dll_peek_at(const dll_t* list, const size_t index)
 {
-    void * outarray = (void * ) malloc (size_of_data * list->count);
-    int pos = 0;
-    dll_node_t * node = list->head->next;
-    while (node != list->tail)
-    {
-        memcpy(outarray + pos++ * size_of_data, node->data, size_of_data);
-        node = node->next;
+    const dll_node_t* node = dll_peek_node_at(list, index);
+
+    if (!node) {
+        return NULL;
     }
-    return outarray;
+
+    return node->data;
 }
 
-dll_t * dll_from_array(void * array, int count, size_t size_of_data)
+void*
+dll_extract_at(dll_t* list, const size_t index)
 {
-    dll_t * outlist = dll_init();
-    for (int i = 0; i < count; ++i)
-    {
-        void * data = (void * ) malloc (count * size_of_data);
-        memcpy(data, array + i*size_of_data, size_of_data);
-        dll_append(outlist, data);
+    dll_node_t* node = dll_peek_node_at(list, index);
+
+    if (!node) {
+        return NULL;
     }
-    return outlist;
+
+    void* data = node->data;
+    dll_delete(list, node, NULL);
+
+    return data;
 }
 
-bool dll_swap_nodes(dll_t * list, dll_node_t * node1, dll_node_t * node2)
+dll_t*
+dll_clone(const dll_t* list)
+{
+    dll_t*      clone   = dll_create();
+    dll_node_t* current = list->head->next;
+
+    while (current != list->tail) {
+        dll_append(clone, current->data);
+        current = current->next;
+    }
+    return clone;
+}
+
+static bool
+dll_swap_nodes(dll_t* list, dll_node_t* node1, dll_node_t* node2)
 {
     // Don't do this please...
     if (node1 == node2)
         return false;
 
-    if (node1->next == node2)
-    {
+    if (node1->next == node2) {
         node1->next = node2->next;
         node2->prev = node1->prev;
 
@@ -288,10 +264,9 @@ bool dll_swap_nodes(dll_t * list, dll_node_t * node1, dll_node_t * node2)
         node2->next = node1;
         node1->prev = node2;
     }
-    else
-    {
-        dll_node_t * p = node2->prev;
-        dll_node_t * n = node2->next;
+    else {
+        dll_node_t* p = node2->prev;
+        dll_node_t* n = node2->next;
 
         node2->prev = node1->prev;
         node2->next = node1->next;
@@ -323,23 +298,83 @@ bool dll_swap_nodes(dll_t * list, dll_node_t * node1, dll_node_t * node2)
     return true;
 }
 
-bool dll_swap(dll_t * list, int index1, int index2)
+bool
+dll_swap(dll_t* list, const size_t index1, const size_t index2)
 {
     if (index1 < 0 || index1 >= list->count || index2 < 0 || index2 >= list->count)
         return false;
+
     // Swap these nodes, give the indexes in order
-    int min, max;
-    if (index1 < index2)
-    {
+    size_t min = 0, max = 0;
+    if (index1 < index2) {
         min = index1;
         max = index2;
     }
-    else
-    {
+    else {
         min = index2;
         max = index1;
     }
-    dll_swap_nodes(list, dll_at(list, min), dll_at(list, max));
-    return true;
+
+    return dll_swap_nodes(list, dll_peek_node_at(list, min), dll_peek_node_at(list, max));
 }
 
+void
+dll_print(const dll_t* list, dll_print_fn_t fn, void* arg)
+{
+    /* Printing function must be provided (otherwise, what's the point of this function? :)) */
+    abort_unless(fn);
+
+    dll_node_t* current = list->head->next;
+    while (current != list->tail) {
+        fn(current->data, arg);
+        current = current->next;
+    }
+}
+
+void
+dll_foreach(const dll_t* list, dll_foreach_fn_t fn, void* arg)
+{
+    /* Function must be provided (otherwise, what's the point of this function? :)) */
+    abort_unless(fn);
+
+    dll_node_t* current = list->head->next;
+    while (current != list->tail) {
+        fn(current->data, arg);
+        current = current->next;
+	}
+}
+
+void*
+dll_to_array(const dll_t* list, const size_t size_of_elem, size_t* rv_size)
+{
+    if (list->count == 0) {
+        return NULL;
+    }
+
+    void*  outarray  = malloc(size_of_elem * list->count);
+    size_t count     = 0;
+    dll_node_t* node = list->head->next;
+
+    while (node != list->tail) {
+        memcpy(outarray + count++ * size_of_elem, node->data, size_of_elem);
+        node = node->next;
+    }
+
+    *rv_size = count;
+
+    return outarray;
+}
+
+dll_t*
+dll_from_array(void* array, const size_t count, const size_t size_of_elem)
+{
+    dll_t* outlist = dll_create();
+
+    for (size_t i = 0; i < count; ++i) {
+        void* data = malloc(count * size_of_elem);
+        memcpy(data, array + i*size_of_elem, size_of_elem);
+        dll_append(outlist, data);
+    }
+
+    return outlist;
+}

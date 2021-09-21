@@ -5,7 +5,7 @@
  *
  *    Description:  A simple test file for the doubly linked list
  *
- *        Version:  1.0
+ *        Version:  2.0
  *        Created:  2018-05-10 09:45:21
  *       Revision:  none
  *       Compiler:  gcc
@@ -16,78 +16,144 @@
  * =====================================================================================
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include "dll.h"
 
 #define NR_ELEMS 20
 
-void print_list(void * data)
+// Test utilities
+#define expect(actual, expected) \
+    if (actual != expected) {\
+        fprintf(stderr, "Condition \"%s == %s\" was not met.\n", #actual, #expected);\
+        abort();\
+    }
+
+static void
+print_list(const void* data, void* arg)
 {
+    (void)arg;
+
     // We know our list has integers
-    printf("%d\n", *(int*)data);
+    printf("%d ", *(int*)data);
 }
 
-int main(int argc, char* argv[])
+static void
+list_foreach_fn(const void* data, void* arg)
 {
-    printf("sizeof list:\t%lu\n", sizeof(dll_t));
-    printf("sizeof node:\t%lu\n", sizeof(dll_node_t));
-    struct timeval t0, t1;
-    double elapsed;
-    dll_t * list = dll_init();
-    // fill up with some elems
-    srand(time(NULL));
+    const int current = *(const int*)data;
+    int       *sum    = arg;
 
-    for (unsigned i = 0; i < NR_ELEMS; ++i)
-    {
-        int * c = (int*)malloc(sizeof *c);
-        *c = i;
-        dll_append(list, (void*)c);
-    }
-    
-    /* Print the list with our helper function */
-    dll_print(list, print_list);
+    *sum += current;
+}
 
-    // Let's try accessing element nr. 199980 (at the end)
-    unsigned int target = 19;
-    gettimeofday(&t0, NULL);
-    dll_node_t * result = dll_at(list, target);
-    gettimeofday(&t1, NULL);
-    elapsed = ((double)(t1.tv_sec) - (double)(t0.tv_sec)) * 1e3;
-    elapsed += ((double)(t1.tv_usec) - (double)(t0.tv_usec)) / 1e3;
-    printf("The data at position '%d' is:\t%d\n", target, *(int*)result->data);
-    printf("Elapsed time:\t%.5f msecs\n", elapsed);
-    printf("Swapping elems 14 and 9...\n");
-    dll_swap(list, 14, 9);
+int
+main(int argc, char* argv[])
+{
+    dll_t* dll = dll_create();
+    expect(dll_is_empty(dll), true);
 
-    dll_node_t * current = list->head->next;
-    dll_node_t * foo;
-    int i = 0;
-    while (current != list->tail)
-    {
-        foo = current->next;
-        while (foo != list->tail)
-        {
-            if (i++ == 5)
-            {
-                printf("Swap!\n");
-                dll_swap_nodes(list, current->next, foo);
-                current = current->next;
-            }
-            foo = foo->next;
-        }
-        current = current->next;
+    int nums[5] = {13, 1, 4, -2, 7};
+    for (size_t i = 0; i < 5; ++i) {
+        dll_append(dll, &nums[i]);
     }
 
+    expect(dll_count(dll), 5);
 
-    printf("List looks like this at the end:\n");
-    dll_print(list, print_list);
+    int first = 3;
+    dll_insert_beginning(dll, &first);
+    expect(dll_count(dll), 6);
 
-    printf("Destroying...\n");
-    dll_destroy(list);
+    const int verify_first = *(int*)dll_peek_at(dll, 0);
+    expect(verify_first, first);
+
+    // Let's remove node at position 4
+    const int extracted = *(int*)dll_extract_at(dll, 4);
+    expect(extracted, -2);
+
+    // clone && empty
+    dll_t* clone = dll_clone(dll);
+    expect(dll_is_empty(clone), false);
+    expect(dll_count(clone), 5);
+
+    dll_empty(clone, NULL);
+    expect(dll_is_empty(clone), true);
+    expect(dll_count(clone), 0);
+
+    dll_destroy(clone, NULL);
+
+    // swap
+    expect(dll_swap(dll, 2, 3), true);
+    expect(dll_swap(dll, -2, 3), false);
+    expect(dll_swap(dll, 0, 38), false);
+
+    // print
+    printf("List: ");
+    dll_print(dll, print_list, NULL);
+    printf("\n");
+
+    // foreach
+    int sum = 0;
+    dll_foreach(dll, list_foreach_fn, &sum);
+    expect(sum, 28);
+
+    // list contains following values: {3 13 4 1 7}
+    expect(dll_count(dll), 5);
+
+    // to array
+    size_t array_size = 0;
+    int*   array      = dll_to_array(dll, sizeof(int), &array_size);
+    expect(array_size, 5);
+
+    expect(array[0], 3);
+    expect(array[1], 13);
+    expect(array[2], 4);
+    expect(array[3], 1);
+    expect(array[4], 7);
+
+    // back to list
+    dll_t* new_list = dll_from_array(array, 5, sizeof(int));
+    expect(dll_count(new_list), 5);
+    expect(*(int*)dll_peek_at(new_list, 0), 3);
+    expect(*(int*)dll_peek_at(new_list, 1), 13);
+    expect(*(int*)dll_peek_at(new_list, 2), 4);
+    expect(*(int*)dll_peek_at(new_list, 3), 1);
+    expect(*(int*)dll_peek_at(new_list, 4), 7);
+
+    // test macros
+    int awesome_first_element = 37;
+    dll_prepend(new_list, &awesome_first_element);
+
+    int fancy_last_element = 1234567890;
+    dll_append(new_list, &fancy_last_element);
+    expect(dll_count(new_list), 7);
+
+    expect(*(int*)dll_delete_at(new_list, 2), 13);
+    // list contains now the following values: {37 3 4 1 7 1234567890}
+    expect(dll_count(new_list), 6);
+
+    expect(*(int*)dll_extract_first(new_list), 37);
+    // list contains now the following values: {3 4 1 7 1234567890}
+    expect(dll_count(new_list), 5);
+
+    expect(*(int*)dll_pop_first(new_list), 3);
+    // list contains now the following values: {4 1 7 1234567890}
+    expect(dll_count(new_list), 4);
+
+    expect(*(int*)dll_extract_last(new_list), 1234567890);
+    // list contains now the following values: {4 1 7}
+    expect(dll_count(new_list), 3);
+
+    expect(*(int*)dll_extract_last(new_list), 7);
+    // list contains now the following values: {4 1}
+    expect(dll_count(new_list), 2);
+
+    // cleanup
+    dll_destroy(dll, NULL);
+    dll_destroy(new_list, free);
+    free(array);
+
     return 0;
 }
-
