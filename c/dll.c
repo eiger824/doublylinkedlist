@@ -243,6 +243,9 @@ dll_clone(const dll_t* list)
 void*
 dll_find(const dll_t* list, dll_find_fn_t fn, void* arg)
 {
+    /* Searching function must be provided (otherwise, what's the point of this function? :)) */
+    abort_unless(fn);
+
     dll_node_t* current = list->head->next;
     while (current != list->tail) {
         if (fn(current->data, arg)) {
