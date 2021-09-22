@@ -240,6 +240,20 @@ dll_clone(const dll_t* list)
     return clone;
 }
 
+void*
+dll_find(const dll_t* list, dll_find_fn_t fn, void* arg)
+{
+    dll_node_t* current = list->head->next;
+    while (current != list->tail) {
+        if (fn(current->data, arg)) {
+            return current->data;
+        }
+        current = current->next;
+    }
+
+    return NULL;
+}
+
 static bool
 dll_swap_nodes(dll_t* list, dll_node_t* node1, dll_node_t* node2)
 {

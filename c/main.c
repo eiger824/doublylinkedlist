@@ -49,6 +49,15 @@ list_foreach_fn(const void* data, void* arg)
     *sum += current;
 }
 
+static bool
+list_cmp_fn(const void* elem_, void* arg)
+{
+    const int current = *(int*)elem_;
+    const int target  = *(int*)arg;
+
+    return current == target;
+}
+
 int
 main(int argc, char* argv[])
 {
@@ -129,6 +138,16 @@ main(int argc, char* argv[])
     int fancy_last_element = 1234567890;
     dll_append(new_list, &fancy_last_element);
     expect(dll_count(new_list), 7);
+
+    // let's find the integer 7
+    int       target = 7;
+    const int match  = *(int*)dll_find(new_list, list_cmp_fn, &target);
+    expect(match, target);
+
+    // find something that doesn't exist
+    target = -23;
+    const void* found = dll_find(new_list, list_cmp_fn, &target);
+    expect(found, NULL);
 
     expect(*(int*)dll_delete_at(new_list, 2), 13);
     // list contains now the following values: {37 3 4 1 7 1234567890}

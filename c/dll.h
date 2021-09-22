@@ -9,6 +9,7 @@ typedef struct dll_type dll_t;
 /* Utility function prototypes. */
 typedef void (*dll_print_fn_t)(const void* data, void* arg);
 typedef void (*dll_foreach_fn_t)(const void* data, void* arg);
+typedef bool (*dll_find_fn_t)(const void* data, void* arg);
 typedef void (*dll_free_fn_t)(void* data);
 
 /**
@@ -115,6 +116,18 @@ dll_extract_at(dll_t* list, size_t index);
  */
 dll_t*
 dll_clone(const dll_t* list);
+
+/**
+ * @brief Find a given element in the list, matching the search criteria given with a custom function.
+ *
+ * @param list List.
+ * @param fn   Search function (must be provided).
+ * @param arg  Argument sent to @p fn.
+ *
+ * @return Pointer to the data matching the search criteria, or NULL if no such element was found.
+ */
+void*
+dll_find(const dll_t* list, dll_find_fn_t fn, void* arg);
 
 /**
  * @brief Swap two given nodes of the list by providing their index.
