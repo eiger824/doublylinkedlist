@@ -10,11 +10,11 @@
         abort();\
     }
 
-typedef struct dll_node_type {
+struct dll_node_type {
     struct dll_node_type* next;
     struct dll_node_type* prev;
     void*                 data;
-} dll_node_t;
+};
 
 struct dll_type {
     dll_node_t* head;
@@ -240,7 +240,7 @@ dll_clone(const dll_t* list)
     return clone;
 }
 
-void*
+dll_node_t*
 dll_find(const dll_t* list, dll_find_fn_t fn, void* arg)
 {
     /* Searching function must be provided (otherwise, what's the point of this function? :)) */
@@ -249,12 +249,24 @@ dll_find(const dll_t* list, dll_find_fn_t fn, void* arg)
     dll_node_t* current = list->head->next;
     while (current != list->tail) {
         if (fn(current->data, arg)) {
-            return current->data;
+            return current;
         }
         current = current->next;
     }
 
     return NULL;
+}
+
+void*
+dll_node_peek(const dll_node_t* node)
+{
+    return node->data;
+}
+
+void
+dll_remove(dll_t* list, dll_node_t* node, dll_free_fn_t fn)
+{
+    dll_delete(list, node, fn);
 }
 
 static bool

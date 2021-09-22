@@ -140,14 +140,14 @@ main(int argc, char* argv[])
     expect(dll_count(new_list), 7);
 
     // let's find the integer 7
-    int       target = 7;
-    const int match  = *(int*)dll_find(new_list, list_cmp_fn, &target);
-    expect(match, target);
+    int               target  = 7;
+    const dll_node_t* match   = dll_find(new_list, list_cmp_fn, &target);
+    const int         matched = *(int*)dll_node_peek(match);
+    expect(matched, target);
 
     // find something that doesn't exist
     target = -23;
-    const void* found = dll_find(new_list, list_cmp_fn, &target);
-    expect(found, NULL);
+    expect(dll_find(new_list, list_cmp_fn, &target), NULL);
 
     expect(*(int*)dll_delete_at(new_list, 2), 13);
     // list contains now the following values: {37 3 4 1 7 1234567890}
@@ -168,6 +168,15 @@ main(int argc, char* argv[])
     expect(*(int*)dll_extract_last(new_list), 7);
     // list contains now the following values: {4 1}
     expect(dll_count(new_list), 2);
+
+    // find && remove node with integer 1
+    target = 1;
+    dll_node_t* last       = dll_find(new_list, list_cmp_fn, &target);
+    const int   last_match = *(int*)dll_node_peek(last);
+    expect(last_match, target);
+
+    dll_remove(new_list, last, NULL);
+    expect(dll_count(new_list), 1);
 
     // cleanup
     dll_destroy(dll, NULL);

@@ -4,7 +4,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-typedef struct dll_type dll_t;
+typedef struct dll_type      dll_t;
+typedef struct dll_node_type dll_node_t;
 
 /* Utility function prototypes. */
 typedef void (*dll_print_fn_t)(const void* data, void* arg);
@@ -124,10 +125,30 @@ dll_clone(const dll_t* list);
  * @param fn   Search function (must be provided).
  * @param arg  Argument sent to @p fn.
  *
- * @return Pointer to the data matching the search criteria, or NULL if no such element was found.
+ * @return Pointer to the node whose data matches the search criteria, or NULL if no such element was found.
+ */
+dll_node_t*
+dll_find(const dll_t* list, dll_find_fn_t fn, void* arg);
+
+/**
+ * @brief Returns the inner-data contained in the given node.
+ *
+ * @param node List node.
+ *
+ * @return Raw data pointer contained in @p node.
  */
 void*
-dll_find(const dll_t* list, dll_find_fn_t fn, void* arg);
+dll_node_peek(const dll_node_t* node);
+
+/**
+ * @brief Removes the given node from the list, possibly applying a custom function to free the node's inner-data.
+ *
+ * @param list List.
+ * @param node Node to remove.
+ * @param fn   Function to destroy @p node's data.
+ */
+void
+dll_remove(dll_t* list, dll_node_t* node, dll_free_fn_t fn);
 
 /**
  * @brief Swap two given nodes of the list by providing their index.
